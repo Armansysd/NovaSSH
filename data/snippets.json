@@ -1,5 +1,25 @@
 [
   {
+    "id": "sn-top-cpu",
+    "title": "⚡ Top 5 CPU Consuming Processes",
+    "command": "ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu | head -n 6",
+    "tags": [
+      "Performance",
+      "CPU"
+    ],
+    "description": "مشاهده ۵ پروسه سنگین از نظر مصرف پردازنده (CPU)"
+  },
+  {
+    "id": "sn-top-mem",
+    "title": "💾 Top 5 RAM Consuming Processes",
+    "command": "ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head -n 6",
+    "tags": [
+      "Performance",
+      "RAM"
+    ],
+    "description": "مشاهده ۵ پروسه سنگین از نظر مصرف حافظه (RAM)"
+  },
+  {
     "id": "sn-sys-health",
     "title": "📊 System Resource Quick View",
     "command": "echo '=== OS ===' \u0026\u0026 uname -srm \u0026\u0026 echo '=== MEMORY ===' \u0026\u0026 free -h \u0026\u0026 echo '=== DISK ===' \u0026\u0026 df -h /",
@@ -28,25 +48,5 @@
       "Security"
     ],
     "description": "نمایش تمام پورت‌های شبکه در حال اجرای سرور"
-  },
-  {
-    "id": "sn-top-cpu",
-    "title": "⚡ Top 5 CPU Consuming Processes",
-    "command": "ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%cpu | head -n 6",
-    "tags": [
-      "Performance",
-      "CPU"
-    ],
-    "description": "مشاهده ۵ پروسه سنگین از نظر مصرف پردازنده (CPU)"
-  },
-  {
-    "id": "sn-top-mem",
-    "title": "💾 Top 5 RAM Consuming Processes",
-    "command": "ps -eo pid,ppid,cmd,%mem,%cpu --sort=-%mem | head -n 6",
-    "tags": [
-      "Performance",
-      "RAM"
-    ],
-    "description": "مشاهده ۵ پروسه سنگین از نظر مصرف حافظه (RAM)"
   }
 ]

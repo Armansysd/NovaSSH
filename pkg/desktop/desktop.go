@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"time"
 )
@@ -16,9 +17,9 @@ func OpenWindow(url string, width int, height int, enabled bool) {
 		return
 	}
 
-	// Wait 500ms for HTTP server to bind
+	// Wait 300ms for HTTP server to bind
 	go func() {
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(300 * time.Millisecond)
 		err := openNativeApp(url, width, height)
 		if err != nil {
 			log.Printf("[Desktop] Native app window fallback: %v", err)
@@ -31,10 +32,14 @@ func openNativeApp(url string, width, height int) error {
 	windowSize := fmt.Sprintf("--window-size=%d,%d", width, height)
 	appUrl := fmt.Sprintf("--app=%s", url)
 
+	// Create an isolated lightweight app profile so Edge/Chrome runs as a standalone desktop process
+	// and does not merge into an existing background browser window.
+	tempProfile := filepath.Join(os.TempDir(), "novassh_app_profile")
+
 	switch runtime.GOOS {
 	case "windows":
 		candidates := []string{
-			// Microsoft Edge (Installed by default on all Windows 10 & 11 as WebView2 engine)
+			// Microsoft Edge (WebView2 engine)
 			`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`,
 			`C:\Program Files\Microsoft\Edge\Application\msedge.exe`,
 			// Google Chrome
@@ -45,7 +50,7 @@ func openNativeApp(url string, width, height int) error {
 		}
 		for _, exe := range candidates {
 			if _, err := os.Stat(exe); err == nil {
-				cmd := exec.Command(exe, appUrl, windowSize)
+				cmd := exec.Command(exe, appUrl, windowSize, fmt.Sprintf("--user-data-dir=%s", tempProfile), "--no-first-run", "--no-default-browser-check")
 				return cmd.Start()
 			}
 		}
@@ -62,7 +67,7 @@ func openNativeApp(url string, width, height int) error {
 		}
 		for _, bin := range candidates {
 			if path, err := exec.LookPath(bin); err == nil {
-				cmd := exec.Command(path, appUrl, windowSize)
+				cmd := exec.Command(path, appUrl, windowSize, fmt.Sprintf("--user-data-dir=%s", tempProfile), "--no-first-run", "--no-default-browser-check")
 				return cmd.Start()
 			}
 		}
@@ -76,7 +81,7 @@ func openNativeApp(url string, width, height int) error {
 		}
 		for _, exe := range candidates {
 			if _, err := os.Stat(exe); err == nil {
-				cmd := exec.Command(exe, appUrl, windowSize)
+				cmd := exec.Command(exe, appUrl, windowSize, fmt.Sprintf("--user-data-dir=%s", tempProfile), "--no-first-run", "--no-default-browser-check")
 				return cmd.Start()
 			}
 		}

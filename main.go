@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -24,12 +25,15 @@ import (
 var embeddedWeb embed.FS
 
 // Version build tag
-var Version = "3.0-Enterprise-Desktop"
+var Version = "4.2-Enterprise-PRO"
 
 type App struct {
-	storage    *storage.Manager
-	sshManager *sshclient.Manager
-	sftpClient *sftpclient.ClientManager
+	storage       *storage.Manager
+	sshManager    *sshclient.Manager
+	sftpClient    *sftpclient.ClientManager
+	lastHeartbeat time.Time
+	muHeartbeat   sync.Mutex
+	hasConnected  bool
 }
 
 func main() {
@@ -44,6 +48,20 @@ func main() {
 	log.Println("   10+ Real DevOps Tools • True OLED Dark Mode • Native Desktop   ")
 	log.Println("================================================================")
 
+	localURL := fmt.Sprintf("http://127.0.0.1:%d", *port)
+
+	// Port collision check: if an instance is already running on port 8080,
+	// simply open a new app window pointing to the existing instance and exit cleanly.
+	if isPortBusy(*port) {
+		if *desktopMode {
+			log.Printf("[Desktop] Existing NovaSSH server detected on port %d. Opening window...", *port)
+			desktop.OpenWindow(localURL, 1280, 860, true)
+			time.Sleep(1 * time.Second)
+			os.Exit(0)
+		}
+		log.Fatalf("[Error] Port %d is already in use by another process.", *port)
+	}
+
 	store, err := storage.NewManager(*dataDir)
 	if err != nil {
 		log.Fatalf("Error initializing storage directory: %v", err)
@@ -53,13 +71,19 @@ func main() {
 	cm := sftpclient.NewClientManager(sm)
 
 	app := &App{
-		storage:    store,
-		sshManager: sm,
-		sftpClient: cm,
+		storage:       store,
+		sshManager:    sm,
+		sftpClient:    cm,
+		lastHeartbeat: time.Now(),
 	}
 
 	// Background Goroutine: Periodic health ping of all servers every 30s
 	go app.startBackgroundMonitor()
+
+	// Background Goroutine: Desktop window lifecycle monitor (Auto-shutdown when window closes)
+	if *desktopMode {
+		go app.startLifecycleMonitor()
+	}
 
 	// HTTP Routing
 	mux := http.NewServeMux()
@@ -84,6 +108,10 @@ func main() {
 	mux.HandleFunc("/api/snippets", app.handleSnippets)
 	mux.HandleFunc("/api/monitor", app.handleMonitor)
 	mux.HandleFunc("/api/command", app.handleRunCommand)
+
+	// Lifecycle & Heartbeat endpoints
+	mux.HandleFunc("/api/heartbeat", app.handleHeartbeat)
+	mux.HandleFunc("/api/shutdown", app.handleShutdown)
 
 	// New 10+ Practical DevOps & Administration Endpoints
 	mux.HandleFunc("/api/services", app.handleListServices)
@@ -119,13 +147,59 @@ func main() {
 	addr := fmt.Sprintf("0.0.0.0:%d", *port)
 	log.Printf("🌟 [NovaSSH] Enterprise Server listening on http://%s", addr)
 
-	// Launch Native Desktop Application Window (Edge/Chrome/Chromium WebView App Mode)
-	localURL := fmt.Sprintf("http://127.0.0.1:%d", *port)
+	// Launch Native Desktop Application Window
 	desktop.OpenWindow(localURL, 1280, 860, *desktopMode)
 
 	if err := http.ListenAndServe(addr, enableCORS(mux)); err != nil {
 		log.Fatalf("Web server error: %v", err)
 	}
+}
+
+func isPortBusy(port int) bool {
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	conn, err := net.DialTimeout("tcp", addr, 300*time.Millisecond)
+	if err == nil {
+		_ = conn.Close()
+		return true
+	}
+	return false
+}
+
+func (a *App) startLifecycleMonitor() {
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		<-ticker.C
+		a.muHeartbeat.Lock()
+		connected := a.hasConnected
+		last := a.lastHeartbeat
+		a.muHeartbeat.Unlock()
+
+		// Once the desktop app window has sent at least one heartbeat,
+		// if 15 seconds pass without a heartbeat, close the backend server.
+		if connected && time.Since(last) > 15*time.Second {
+			log.Println("[Desktop] App window closed by user (no heartbeat). Shutting down NovaSSH server...")
+			os.Exit(0)
+		}
+	}
+}
+
+func (a *App) handleHeartbeat(w http.ResponseWriter, r *http.Request) {
+	a.muHeartbeat.Lock()
+	a.lastHeartbeat = time.Now()
+	a.hasConnected = true
+	a.muHeartbeat.Unlock()
+	sendJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (a *App) handleShutdown(w http.ResponseWriter, r *http.Request) {
+	log.Println("[Desktop] Shutdown beacon received from window close. Exiting...")
+	sendJSON(w, http.StatusOK, map[string]string{"status": "shutting_down"})
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		os.Exit(0)
+	}()
 }
 
 // startBackgroundMonitor pings servers concurrently using Goroutines

@@ -55,6 +55,18 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(() => {
     loadServers(true);
   }, 30000);
+
+  // Heartbeat to keep backend server alive while app window is open
+  const sendHeartbeat = () => {
+    fetch('/api/heartbeat').catch(() => {});
+  };
+  sendHeartbeat();
+  setInterval(sendHeartbeat, 3000);
+
+  // Notify backend to shut down immediately when native app window is closed
+  window.addEventListener('beforeunload', () => {
+    navigator.sendBeacon('/api/shutdown');
+  });
 });
 
 function applyTheme(theme) {
