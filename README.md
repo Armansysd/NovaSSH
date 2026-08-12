@@ -2,8 +2,6 @@ NovaSSH
 A lightweight, cross-platform SSH terminal and SFTP manager written in Go.
 
 
-<img width="1296" height="1106" alt="{18D4B7EB-7448-4170-95FB-CF25967E345A}" src="https://github.com/user-attachments/assets/e00daf1c-9d1c-463d-a2aa-3c8f0ad4d65b" />
-
 Overview
 NovaSSH is a self-contained desktop and web-based SSH/SFTP management application designed for Linux and Windows system administration. It combines an interactive terminal, file manager, and diagnostic tools into a single binary with minimal memory footprint and zero external runtime dependencies.
 
