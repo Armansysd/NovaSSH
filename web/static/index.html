@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NovaSSH Enterprise Studio — v4.0 PRO</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/xterm.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="h-screen flex flex-col overflow-hidden" data-theme="oled-black">
+  <!-- Top Navigation Header -->
+  <header class="ent-header px-6 flex items-center justify-between z-20 shrink-0">
+    <div class="flex items-center space-x-4 space-x-reverse">
+      <div class="w-8 h-8 rounded-md bg-[#161a24] border border-[#212836] flex items-center justify-center text-white font-mono text-sm font-bold shadow-sm">
+        N_
+      </div>
+      <div>
+        <h1 class="text-sm font-bold text-white flex items-center gap-2">
+          <span data-i18n="app_title">NovaSSH Enterprise</span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-[#161a24] text-[#4b96ff] border border-[#212836] font-mono">v4.0 PRO</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Center Search Bar -->
+    <div class="flex-1 max-w-md mx-8 hidden md:block">
+      <div class="relative">
+        <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Search servers by name, IP, tag or group... (/)" 
+               class="w-full bg-[#05070a] border border-[#212836] rounded-md px-3 py-1.5 text-xs text-[#e1e7ef] placeholder-[#647083] focus:outline-none focus:border-[#4b96ff] transition-all">
+        <span class="absolute right-2.5 top-1.5 text-[10px] text-[#647083] bg-[#161a24] px-1.5 py-0.5 rounded border border-[#212836] font-mono">
+          ⌘K
+        </span>
+      </div>
+    </div>
+
+    <!-- Right Action Buttons -->
+    <div class="flex items-center space-x-2.5 space-x-reverse">
+      <!-- Language Switcher in Header -->
+      <select id="header-lang-select" onchange="setLanguage(this.value)" class="ent-input text-xs font-semibold !py-1 !px-2">
+        <option value="en">English (EN)</option>
+        <option value="fa">فارسی (FA)</option>
+        <option value="de">Deutsch (DE)</option>
+        <option value="fr">Français (FR)</option>
+        <option value="es">Español (ES)</option>
+        <option value="ru">Русский (RU)</option>
+        <option value="zh">中文 (ZH)</option>
+        <option value="ja">日本語 (JA)</option>
+        <option value="ar">العربية (AR)</option>
+      </select>
+
+      <button onclick="pingAllServers()" class="btn-default text-xs">
+        <svg class="w-3.5 h-3.5 text-[#10b981]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        <span data-i18n="ping_btn">Ping All</span>
+      </button>
+
+      <button onclick="openServerModal()" class="btn-primary text-xs">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        <span data-i18n="add_server_btn">+ New Server</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Split-Pane Workspace -->
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Left Navigation Sidebar -->
+    <aside id="main-sidebar" class="w-64 bg-[#05070a] border-r border-[#212836] p-3 flex flex-col justify-between shrink-0 overflow-y-auto">
+      <div class="space-y-1">
+        <div class="text-[10px] font-bold text-[#647083] px-3 py-1.5 uppercase tracking-wider font-mono">WORKSPACES & TOOLS</div>
+
+        <button onclick="switchTab('servers')" id="nav-servers" class="nav-item active">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">🖥️</span>
+            <span data-i18n="nav_servers">Servers & Clusters</span>
+          </div>
+          <span id="server-count-badge" class="px-1.5 py-0.5 rounded bg-[#161a24] text-[11px] text-[#e1e7ef] font-mono">0</span>
+        </button>
+
+        <button onclick="switchTab('terminal')" id="nav-terminal" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">💻</span>
+            <span data-i18n="nav_terminal">SSH Terminal</span>
+          </div>
+          <span id="active-term-badge" class="w-2 h-2 rounded-full bg-[#10b981] hidden"></span>
+        </button>
+
+        <button onclick="switchTab('sftp')" id="nav-sftp" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">📁</span>
+            <span data-i18n="nav_sftp">SFTP File Explorer</span>
+          </div>
+        </button>
+
+        <button onclick="switchTab('services')" id="nav-services" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">⚙️</span>
+            <span data-i18n="nav_services">Systemd & Services</span>
+          </div>
+        </button>
+
+        <button onclick="switchTab('docker')" id="nav-docker" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">🐳</span>
+            <span data-i18n="nav_docker">Docker & Containers</span>
+          </div>
+        </button>
+
+        <button onclick="switchTab('ports')" id="nav-ports" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">🌐</span>
+            <span data-i18n="nav_ports">Network & Firewall</span>
+          </div>
+        </button>
+
+        <button onclick="switchTab('keys')" id="nav-keys" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">🔑</span>
+            <span data-i18n="nav_keys">SSH Key Manager</span>
+          </div>
+        </button>
+
+        <button onclick="switchTab('cluster')" id="nav-cluster" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">⚡</span>
+            <span data-i18n="nav_cluster">Cluster Exec</span>
+          </div>
+        </button>
+
+        <button onclick="switchTab('snippets')" id="nav-snippets" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">🚀</span>
+            <span data-i18n="nav_snippets">Command Snippets</span>
+          </div>
+        </button>
+
+        <button onclick="switchTab('monitor')" id="nav-monitor" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">📊</span>
+            <span data-i18n="nav_monitor">System Telemetry</span>
+          </div>
+        </button>
+
+        <button onclick="switchTab('settings')" id="nav-settings" class="nav-item">
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm">🛠️</span>
+            <span data-i18n="nav_settings">Settings & Backups</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Bottom Minimal Copyright -->
+      <div class="p-3 text-[11px] text-[#647083] font-mono">
+        <div>NovaSSH PRO v4.0</div>
+        <div>Go Enterprise Engine</div>
+      </div>
+    </aside>
+
+    <!-- Main Content Panel -->
+    <main class="flex-1 flex flex-col overflow-hidden bg-[#0a0d14] p-5">
+      <!-- 1) SERVERS TAB -->
+      <section id="tab-servers" class="flex-1 flex flex-col overflow-y-auto space-y-4">
+        <div class="flex items-center justify-between ent-panel p-3">
+          <div class="flex items-center space-x-2 space-x-reverse" id="group-filters">
+            <button onclick="filterGroup('All')" class="btn-primary text-xs" data-i18n="all_servers">All Servers</button>
+            <button onclick="filterGroup('Production')" class="btn-default text-xs" data-i18n="production">Production</button>
+            <button onclick="filterGroup('Staging')" class="btn-default text-xs" data-i18n="staging">Staging</button>
+            <button onclick="filterGroup('General')" class="btn-default text-xs" data-i18n="general">General</button>
+          </div>
+          <div class="text-xs text-[#8b95a5]">
+            <span data-i18n="total">Total:</span> <span id="stat-total-servers" class="text-white font-bold">0</span> | 
+            <span data-i18n="online">Online:</span> <span id="stat-online-servers" class="text-[#10b981] font-bold">0</span>
+          </div>
+        </div>
+
+        <div id="servers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-6">
+          <!-- Populated by js -->
+        </div>
+      </section>
+
+      <!-- 2) TERMINAL TAB (Multi-Connection / Multi-Session Enterprise Architecture) -->
+      <section id="tab-terminal" class="flex-1 flex-col hidden h-full w-full overflow-hidden space-y-2">
+        <!-- Multi-Session Tab Bar -->
+        <div class="flex items-center justify-between border-b border-[#212836] pb-1 shrink-0">
+          <div id="ssh-tabs-bar" class="flex items-center gap-1.5 overflow-x-auto flex-1">
+            <!-- Dynamically populated session tabs -->
+          </div>
+          <div class="flex items-center gap-2 pl-3">
+            <select id="terminal-server-select" onchange="openNewSSHConnection(this.value)" class="ent-input text-xs font-semibold">
+              <option value="">+ Connect Server...</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Terminal Modern Enterprise Toolbar -->
+        <div class="ent-panel px-3 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0">
+          <div class="flex items-center space-x-2 space-x-reverse">
+            <span class="text-xs font-semibold text-[#e1e7ef] flex items-center gap-1.5">
+              <span id="term-status-dot" class="status-dot dot-online"></span>
+              <span id="term-active-title" class="font-mono text-white">No active session</span>
+            </span>
+
+            <button onclick="focusActiveTerminal()" class="px-2.5 py-1 rounded bg-[#4b96ff]/15 border border-[#4b96ff]/40 text-[#4b96ff] text-xs font-medium hover:bg-[#4b96ff]/25 transition-all flex items-center gap-1">
+              <span>⚡ Click to Focus & Type</span>
+            </button>
+          </div>
+
+          <div class="flex items-center space-x-1.5 space-x-reverse">
+            <select id="term-fontsize-select" onchange="changeTerminalFontSize(this.value)" class="ent-input text-xs !py-1 !px-2" title="Font Size">
+              <option value="12">12 px</option>
+              <option value="13" selected>13 px</option>
+              <option value="14">14 px</option>
+              <option value="16">16 px</option>
+              <option value="18">18 px</option>
+            </select>
+
+            <select id="term-color-select" onchange="changeTerminalColorTheme(this.value)" class="ent-input text-xs !py-1 !px-2" title="Terminal Color Theme">
+              <option value="oled">OLED Pure Black</option>
+              <option value="warp" selected>Warp Midnight Blue</option>
+              <option value="matrix">Matrix Cyber Green</option>
+              <option value="ubuntu">Ubuntu Purple</option>
+              <option value="cyberpunk">Cyberpunk Amber</option>
+            </select>
+
+            <button onclick="terminalCopy()" class="btn-default text-xs !px-2.5" title="Ctrl+Shift+C" data-i18n="btn_copy">Copy</button>
+            <button onclick="terminalPaste()" class="btn-default text-xs !px-2.5" title="Ctrl+Shift+V" data-i18n="btn_paste">Paste</button>
+            <button onclick="terminalClear()" class="btn-default text-xs !px-2.5" data-i18n="btn_clear">Clear</button>
+            <button onclick="reconnectActiveSSH()" class="btn-blue text-xs !px-2.5" data-i18n="btn_reconnect">Reconnect</button>
+            <button onclick="toggleTerminalFullscreen()" id="term-fullscreen-btn" class="btn-default text-xs !px-2.5" title="Toggle Fullscreen">⛶</button>
+          </div>
+        </div>
+
+        <!-- Dedicated Multi-Session Viewports Container -->
+        <div id="ssh-sessions-container" class="terminal-outer-wrapper">
+          <!-- Each session box renders here -->
+        </div>
+      </section>
+
+      <!-- 3) SFTP MANAGER TAB (Full Parent/Home/Root Navigation + Address Bar) -->
+      <section id="tab-sftp" class="flex-1 flex-col hidden h-full w-full overflow-hidden space-y-3">
+        <!-- SFTP Server & Full Navigation Bar -->
+        <div class="ent-panel px-4 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div class="flex items-center space-x-2 space-x-reverse">
+            <span class="text-xs font-semibold text-[#e1e7ef]">Server:</span>
+            <select id="sftp-server-select" onchange="switchSFTPServer(this.value)" class="ent-input text-xs font-semibold">
+              <option value="">Select server...</option>
+            </select>
+          </div>
+
+          <!-- Navigation Buttons: Up (..), Home (~), Root (/), Refresh -->
+          <div class="flex items-center gap-1.5">
+            <button onclick="sftpGoParent()" class="btn-default text-xs !px-2.5" title="Parent Directory (Up)">
+              ⬆️ <span class="font-mono">..</span>
+            </button>
+            <button onclick="sftpGoHome()" class="btn-default text-xs !px-2.5" title="Home Directory">
+              🏠 <span class="font-mono">~</span>
+            </button>
+            <button onclick="sftpGoRoot()" class="btn-default text-xs !px-2.5" title="Root Directory">
+              📁 <span class="font-mono">/</span>
+            </button>
+            <button onclick="refreshSFTP()" class="btn-default text-xs !px-2" title="Refresh">
+              🔄
+            </button>
+          </div>
+
+          <!-- Interactive Address Input Bar -->
+          <form onsubmit="sftpGoToAddress(event)" class="flex-1 min-w-[220px] max-w-xl flex items-center gap-1.5">
+            <input type="text" id="sftp-address-bar" placeholder="/home/user..." class="ent-input flex-1 font-mono text-xs text-[#4b96ff]">
+            <button type="submit" class="btn-blue text-xs !px-3">Go</button>
+          </form>
+
+          <!-- Action Buttons: Upload, Mkdir, Touch -->
+          <div class="flex items-center space-x-2 space-x-reverse">
+            <label class="btn-primary text-xs cursor-pointer">
+              <span data-i18n="upload_btn">Upload File</span>
+              <input type="file" id="sftp-file-input" class="hidden" onchange="handleSFTPUpload(this)">
+            </label>
+
+            <button onclick="promptMkdir()" class="btn-default text-xs" data-i18n="new_dir_btn">+ New Folder</button>
+            <button onclick="promptTouch()" class="btn-default text-xs" data-i18n="new_file_btn">+ New File</button>
+          </div>
+        </div>
+
+        <div class="ent-panel flex-1 overflow-auto">
+          <table class="w-full text-left sftp-table">
+            <thead>
+              <tr>
+                <th class="w-1/3" data-i18n="tbl_name">Name</th>
+                <th data-i18n="tbl_size">Size</th>
+                <th data-i18n="tbl_perms">Permissions</th>
+                <th data-i18n="tbl_modified">Modified</th>
+                <th class="text-right" data-i18n="tbl_actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sftp-table-body" class="divide-y divide-[#1a202c]">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 4) SYSTEMD & SERVICES TAB -->
+      <section id="tab-services" class="flex-1 flex-col hidden h-full w-full overflow-hidden space-y-4">
+        <div class="ent-panel p-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3 space-x-reverse">
+            <span class="text-xs font-semibold text-[#e1e7ef]">Select Server for Systemd Units:</span>
+            <select id="services-server-select" onchange="loadServices()" class="ent-input text-xs font-semibold">
+              <option value="">Select server...</option>
+            </select>
+          </div>
+          <button onclick="loadServices()" class="btn-default text-xs">Refresh Units</button>
+        </div>
+
+        <div class="ent-panel flex-1 overflow-auto">
+          <table class="w-full text-left sftp-table">
+            <thead>
+              <tr>
+                <th>Service Unit Name</th>
+                <th>Load</th>
+                <th>Active</th>
+                <th>Sub State</th>
+                <th>Description</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="services-table-body" class="divide-y divide-[#1a202c]">
+              <tr><td colspan="6" class="py-6 text-center text-[#8b95a5]">Select a server above to load systemd services...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 5) DOCKER & CONTAINERS TAB -->
+      <section id="tab-docker" class="flex-1 flex-col hidden h-full w-full overflow-hidden space-y-4">
+        <div class="ent-panel p-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3 space-x-reverse">
+            <span class="text-xs font-semibold text-[#e1e7ef]">Select Server for Docker Engine:</span>
+            <select id="docker-server-select" onchange="loadContainers()" class="ent-input text-xs font-semibold">
+              <option value="">Select server...</option>
+            </select>
+          </div>
+          <button onclick="loadContainers()" class="btn-default text-xs">Refresh Containers</button>
+        </div>
+
+        <div class="ent-panel flex-1 overflow-auto">
+          <table class="w-full text-left sftp-table">
+            <thead>
+              <tr>
+                <th>Container ID</th>
+                <th>Names</th>
+                <th>Image</th>
+                <th>Status</th>
+                <th>Ports</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="docker-table-body" class="divide-y divide-[#1a202c]">
+              <tr><td colspan="6" class="py-6 text-center text-[#8b95a5]">Select a server above to list active Docker containers...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 6) NETWORK PORTS & FIREWALL TAB -->
+      <section id="tab-ports" class="flex-1 flex-col hidden h-full w-full overflow-hidden space-y-4">
+        <div class="ent-panel p-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3 space-x-reverse">
+            <span class="text-xs font-semibold text-[#e1e7ef]">Select Server for Network Scanner:</span>
+            <select id="ports-server-select" onchange="loadPorts()" class="ent-input text-xs font-semibold">
+              <option value="">Select server...</option>
+            </select>
+          </div>
+          <button onclick="loadPorts()" class="btn-default text-xs">Scan Open Ports</button>
+        </div>
+
+        <div class="ent-panel flex-1 overflow-auto">
+          <table class="w-full text-left sftp-table">
+            <thead>
+              <tr>
+                <th>Protocol</th>
+                <th>State</th>
+                <th>Listening Local Address</th>
+                <th>Foreign Address</th>
+              </tr>
+            </thead>
+            <tbody id="ports-table-body" class="divide-y divide-[#1a202c]">
+              <tr><td colspan="4" class="py-6 text-center text-[#8b95a5]">Select a server above to scan listening TCP/UDP ports...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 7) SSH KEY MANAGER & AUTHORIZED_KEYS TAB -->
+      <section id="tab-keys" class="flex-1 flex flex-col hidden space-y-6 overflow-y-auto max-w-4xl">
+        <div class="ent-panel p-6 space-y-4">
+          <h2 class="text-base font-bold text-white">🔐 SSH Key Pair Generator (RSA 4096 / Ed25519)</h2>
+          <p class="text-xs text-[#8b95a5]">Generate secure SSH cryptographic key pairs locally using pure Go for authentication without passwords.</p>
+
+          <div class="flex items-center gap-3">
+            <select id="keygen-type" class="ent-input text-xs">
+              <option value="rsa">RSA 4096-bit (Universal)</option>
+              <option value="ed25519">Ed25519 (Modern & Compact)</option>
+            </select>
+            <button onclick="generateKeyPair()" class="btn-primary text-xs">Generate Key Pair</button>
+          </div>
+
+          <div id="keygen-output" class="hidden space-y-3 pt-3 border-t border-[#212836]">
+            <div>
+              <label class="block text-xs text-[#8b95a5] mb-1">Public Key (.pub):</label>
+              <div class="flex gap-2">
+                <input type="text" id="gen-pub-key" readonly class="ent-input w-full font-mono text-xs text-[#4b96ff]">
+                <button onclick="copyInput('gen-pub-key')" class="btn-default text-xs">Copy</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs text-[#8b95a5] mb-1">Private Key (PEM format):</label>
+              <textarea id="gen-priv-key" rows="6" readonly class="ent-input w-full font-mono text-xs text-white"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="ent-panel p-6 space-y-4">
+          <h2 class="text-base font-bold text-white">👥 Remote ~/.ssh/authorized_keys Manager</h2>
+          <div class="flex items-center gap-3">
+            <select id="authkeys-server-select" onchange="loadAuthorizedKeys()" class="ent-input text-xs">
+              <option value="">Select server to inspect authorized_keys...</option>
+            </select>
+            <button onclick="loadAuthorizedKeys()" class="btn-default text-xs">Load Keys</button>
+          </div>
+
+          <textarea id="remote-authkeys-output" rows="5" placeholder="Authorized keys on remote server will appear here..." readonly class="ent-input w-full font-mono text-xs text-[#10b981]"></textarea>
+
+          <div class="space-y-2 pt-2 border-t border-[#212836]">
+            <label class="block text-xs text-[#8b95a5]">Add New Public Key to Remote Server:</label>
+            <div class="flex gap-2">
+              <input type="text" id="add-pub-key-input" placeholder="ssh-rsa AAAAB3NzaC... / ssh-ed25519 AAAAC3Nz..." class="ent-input w-full font-mono text-xs">
+              <button onclick="addRemoteAuthorizedKey()" class="btn-primary text-xs">Authorize Key</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8) CLUSTER EXEC TAB -->
+      <section id="tab-cluster" class="flex-1 flex flex-col hidden space-y-4 overflow-y-auto">
+        <div class="ent-panel p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-white">⚡ Multi-Server Command Broadcast (Cluster Exec)</h2>
+            <button onclick="selectAllServersCluster()" class="btn-default text-xs">Select All Servers</button>
+          </div>
+          <p class="text-xs text-[#8b95a5]">Execute an SSH command across multiple selected servers simultaneously using concurrent Goroutines.</p>
+
+          <div id="cluster-server-checkboxes" class="flex flex-wrap gap-3 py-2">
+            <!-- Dynamically populated -->
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <input type="text" id="cluster-cmd-input" placeholder="e.g. uname -a && uptime" class="ent-input w-full font-mono text-xs">
+            <button onclick="runClusterCommand()" class="btn-primary text-xs">Broadcast Execute</button>
+          </div>
+        </div>
+
+        <div id="cluster-results-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Broadcast results -->
+        </div>
+      </section>
+
+      <!-- 9) SNIPPETS TAB -->
+      <section id="tab-snippets" class="flex-1 flex flex-col hidden space-y-4 overflow-y-auto">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white" data-i18n="snippets_title">Automated Command Snippets</h2>
+            <p class="text-xs text-[#8b95a5]" data-i18n="snippets_subtitle">Execute Linux diagnostic commands with 1-click across any connected server.</p>
+          </div>
+          <button onclick="openSnippetModal()" class="btn-blue text-xs">+ Add Snippet</button>
+        </div>
+
+        <div id="snippets-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Populated by js -->
+        </div>
+
+        <div class="ent-panel p-4 space-y-2 mt-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-[#e1e7ef] font-mono">EXECUTION OUTPUT CONSOLE:</span>
+            <span id="cmd-run-status" class="text-xs text-[#8b95a5]">Ready</span>
+          </div>
+          <pre id="snippet-output" class="bg-[#05070a] p-4 rounded font-mono text-xs text-[#10b981] min-h-[140px] max-h-[260px] overflow-auto border border-[#212836]">
+// Click 'Run on Server' on any snippet above to view execution output...
+          </pre>
+        </div>
+      </section>
+
+      <!-- 10) MONITOR TAB -->
+      <section id="tab-monitor" class="flex-1 flex flex-col hidden space-y-4 overflow-y-auto">
+        <div class="ent-panel p-4 flex items-center justify-between">
+          <div class="flex items-center space-x-3 space-x-reverse">
+            <span class="text-xs font-semibold text-[#e1e7ef]">Select Server for Live Telemetry:</span>
+            <select id="monitor-server-select" onchange="loadServerStats()" class="ent-input text-xs font-semibold">
+              <option value="">Select server...</option>
+            </select>
+          </div>
+          <button onclick="loadServerStats()" class="btn-default text-xs">Refresh Telemetry (SSH RTT)</button>
+        </div>
+
+        <div id="monitor-gauges" class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div class="ent-panel p-5 space-y-3">
+            <div class="flex items-center justify-between text-xs text-[#8b95a5]">
+              <span>CPU Usage (%)</span>
+              <span id="cpu-val-text" class="text-white font-bold text-sm">0%</span>
+            </div>
+            <div class="w-full bg-[#05070a] rounded-full h-2.5 overflow-hidden border border-[#212836]">
+              <div id="cpu-bar" class="bg-[#4b96ff] h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <p id="cpu-load-detail" class="text-xs text-[#8b95a5] font-mono">Load Avg: -</p>
+          </div>
+
+          <div class="ent-panel p-5 space-y-3">
+            <div class="flex items-center justify-between text-xs text-[#8b95a5]">
+              <span>RAM Memory Usage (%)</span>
+              <span id="ram-val-text" class="text-white font-bold text-sm">0%</span>
+            </div>
+            <div class="w-full bg-[#05070a] rounded-full h-2.5 overflow-hidden border border-[#212836]">
+              <div id="ram-bar" class="bg-[#10b981] h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <p id="ram-detail" class="text-xs text-[#8b95a5] font-mono">0 MB / 0 MB</p>
+          </div>
+
+          <div class="ent-panel p-5 space-y-3">
+            <div class="flex items-center justify-between text-xs text-[#8b95a5]">
+              <span>Disk Root Storage (/)</span>
+              <span id="disk-val-text" class="text-white font-bold text-sm">0%</span>
+            </div>
+            <div class="w-full bg-[#05070a] rounded-full h-2.5 overflow-hidden border border-[#212836]">
+              <div id="disk-bar" class="bg-[#f59e0b] h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            <p id="disk-detail" class="text-xs text-[#8b95a5] font-mono">0 GB / 0 GB</p>
+          </div>
+        </div>
+
+        <div class="ent-panel p-5 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div class="text-xs text-[#8b95a5]">Hostname & Linux Operating System</div>
+            <div id="os-name-text" class="text-base font-bold text-white font-mono mt-1">-</div>
+          </div>
+          <div>
+            <div class="text-xs text-[#8b95a5]">Server Uptime Duration</div>
+            <div id="uptime-text" class="text-sm font-semibold text-[#10b981] font-mono mt-1">-</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 11) SETTINGS & BACKUPS TAB -->
+      <section id="tab-settings" class="flex-1 flex flex-col hidden space-y-6 overflow-y-auto max-w-4xl">
+        <div class="ent-panel p-6 space-y-5">
+          <h2 class="text-base font-bold text-white" data-i18n="settings_title">Settings, Preferences & Backups</h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <label class="block text-xs font-semibold text-white" data-i18n="theme_select">OLED & UI Color Theme</label>
+              <select id="theme-select" onchange="applyTheme(this.value)" class="ent-input w-full">
+                <option value="oled-black">True OLED Black (#000000 - Eye Protection)</option>
+                <option value="enterprise-carbon">Enterprise Carbon (#0a0d14)</option>
+                <option value="midnight-blue">Midnight Dark Blue (#060b14)</option>
+              </select>
+              <p class="text-[11px] text-[#647083]">True OLED Black disables background illumination to save power and prevent eye strain.</p>
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-xs font-semibold text-white" data-i18n="lang_select">Official Language</label>
+              <select id="lang-select" onchange="setLanguage(this.value)" class="ent-input w-full">
+                <option value="en">English (EN)</option>
+                <option value="fa">فارسی (FA - Persian)</option>
+                <option value="de">Deutsch (DE - German)</option>
+                <option value="fr">Français (FR - French)</option>
+                <option value="es">Español (ES - Spanish)</option>
+                <option value="ru">Русский (RU - Russian)</option>
+                <option value="zh">中文 (ZH - Chinese)</option>
+                <option value="ja">日本語 (JA - Japanese)</option>
+                <option value="ar">العربية (AR - Arabic)</option>
+              </select>
+              <p class="text-[11px] text-[#647083]">Supports official global international languages with automatic LTR/RTL switching.</p>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-[#212836] space-y-3">
+            <h3 class="text-sm font-semibold text-white">Configuration Backup & Restore</h3>
+            <div class="flex flex-wrap gap-3">
+              <button onclick="exportBackup()" class="btn-primary text-xs" data-i18n="backup_export">
+                Export Backup (JSON)
+              </button>
+              <label class="btn-default text-xs cursor-pointer">
+                <span data-i18n="backup_import">Import Backup (JSON)</span>
+                <input type="file" class="hidden" accept=".json" onchange="importBackup(this)">
+              </label>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-[#212836] space-y-2">
+            <h3 class="text-sm font-semibold text-white">Lightweight Single-Binary Cross-Compilation</h3>
+            <pre class="bg-[#05070a] p-3 rounded text-xs font-mono text-[#4b96ff] overflow-x-auto border border-[#212836]">
+# Compile optimized Windows (.exe) binary with stripped debug symbols (-s -w):
+GOOS=windows GOARCH=amd64 go build -ldflags "-s -w -H=windowsgui" -o novassh-win-amd64.exe ./main.go
+
+# Compile optimized Linux binary:
+GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o novassh-linux-amd64 ./main.go
+            </pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- SERVER ADD/EDIT MODAL -->
+  <div id="server-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-backdrop p-4">
+    <div class="ent-panel max-w-lg w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#212836] pb-3">
+        <h3 class="text-base font-bold text-white" id="server-modal-title">Add New Server</h3>
+        <button onclick="closeServerModal()" class="text-[#8b95a5] hover:text-white">✕</button>
+      </div>
+
+      <form id="server-form" onsubmit="saveServerForm(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="srv-id">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[#8b95a5] mb-1">Server Display Name *</label>
+            <input type="text" id="srv-name" required placeholder="e.g. Production Web Server" class="ent-input w-full">
+          </div>
+          <div>
+            <label class="block text-[#8b95a5] mb-1">Group / Category *</label>
+            <select id="srv-group" class="ent-input w-full">
+              <option value="Production">Production</option>
+              <option value="Staging">Staging</option>
+              <option value="Database">Database</option>
+              <option value="General">General</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-2">
+            <label class="block text-[#8b95a5] mb-1">Hostname or IP Address *</label>
+            <input type="text" id="srv-host" required placeholder="192.168.1.100 or domain.com" class="ent-input w-full font-mono text-left" dir="ltr">
+          </div>
+          <div>
+            <label class="block text-[#8b95a5] mb-1">Port</label>
+            <input type="number" id="srv-port" value="22" required class="ent-input w-full font-mono text-center">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[#8b95a5] mb-1">Username *</label>
+            <input type="text" id="srv-username" value="root" required class="ent-input w-full font-mono text-left" dir="ltr">
+          </div>
+          <div>
+            <label class="block text-[#8b95a5] mb-1">Auth Method</label>
+            <select id="srv-auth-type" onchange="toggleAuthFields()" class="ent-input w-full">
+              <option value="password">Password</option>
+              <option value="key">Private Key (RSA/Ed25519)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="field-password">
+          <label class="block text-[#8b95a5] mb-1">Password</label>
+          <input type="password" id="srv-password" placeholder="••••••••••••" class="ent-input w-full font-mono text-left" dir="ltr">
+        </div>
+
+        <div id="field-key" class="hidden space-y-2">
+          <div>
+            <label class="block text-[#8b95a5] mb-1">Private Key PEM or File Path (RSA/Ed25519)</label>
+            <textarea id="srv-private-key" rows="3" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..." class="ent-input w-full font-mono text-left text-[11px]" dir="ltr"></textarea>
+          </div>
+          <div>
+            <label class="block text-[#8b95a5] mb-1">Passphrase (optional)</label>
+            <input type="password" id="srv-passphrase" placeholder="Passphrase..." class="ent-input w-full font-mono text-left" dir="ltr">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[#8b95a5] mb-1">Tags (comma separated)</label>
+          <input type="text" id="srv-tags" placeholder="linux, web, ubuntu, nginx" class="ent-input w-full">
+        </div>
+
+        <div>
+          <label class="block text-[#8b95a5] mb-1">Notes (optional)</label>
+          <textarea id="srv-notes" rows="2" placeholder="Server documentation, dashboard URL, internal notes..." class="ent-input w-full"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 space-x-reverse pt-2">
+          <button type="button" onclick="closeServerModal()" class="btn-default">Cancel</button>
+          <button type="submit" class="btn-primary">Save Server</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- SNIPPET ADD/EDIT MODAL -->
+  <div id="snippet-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-backdrop p-4">
+    <div class="ent-panel max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-[#212836] pb-3">
+        <h3 class="text-base font-bold text-white">Add New Command Snippet</h3>
+        <button onclick="closeSnippetModal()" class="text-[#8b95a5] hover:text-white">✕</button>
+      </div>
+      <form id="snippet-form" onsubmit="saveSnippetForm(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[#8b95a5] mb-1">Snippet Title *</label>
+          <input type="text" id="sn-title" required placeholder="e.g. Check Nginx Status" class="ent-input w-full">
+        </div>
+        <div>
+          <label class="block text-[#8b95a5] mb-1">Linux Command *</label>
+          <textarea id="sn-cmd" required rows="3" placeholder="systemctl status nginx --no-pager" class="ent-input w-full font-mono text-left" dir="ltr"></textarea>
+        </div>
+        <div>
+          <label class="block text-[#8b95a5] mb-1">Short Description</label>
+          <input type="text" id="sn-desc" placeholder="Inspect errors and service status" class="ent-input w-full">
+        </div>
+        <div>
+          <label class="block text-[#8b95a5] mb-1">Tags (comma separated)</label>
+          <input type="text" id="sn-tags" placeholder="nginx, systemctl" class="ent-input w-full">
+        </div>
+        <div class="flex items-center justify-end space-x-2 space-x-reverse pt-2">
+          <button type="button" onclick="closeSnippetModal()" class="btn-default">Cancel</button>
+          <button type="submit" class="btn-primary">Save Snippet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- QUICK CODE EDITOR MODAL -->
+  <div id="code-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-backdrop p-4">
+    <div class="ent-panel max-w-3xl w-full p-6 space-y-3 flex flex-col h-[75vh]">
+      <div class="flex items-center justify-between border-b border-[#212836] pb-3">
+        <h3 class="text-xs font-bold text-[#4b96ff] font-mono flex items-center gap-2" id="code-modal-title">Editing: ...</h3>
+        <button onclick="closeCodeModal()" class="text-[#8b95a5] hover:text-white">✕</button>
+      </div>
+      <input type="hidden" id="code-file-path">
+      <div class="flex-1 overflow-hidden flex flex-col">
+        <textarea id="code-file-editor" class="w-full flex-1 bg-[#05070a] border border-[#212836] rounded p-4 font-mono text-xs text-[#e1e7ef] focus:outline-none focus:border-[#4b96ff] leading-relaxed text-left" dir="ltr"></textarea>
+      </div>
+      <div class="flex items-center justify-between pt-2">
+        <span class="text-xs text-[#647083]">Supports remote text files up to 2MB</span>
+        <div class="flex items-center space-x-2 space-x-reverse">
+          <button onclick="closeCodeModal()" class="btn-default">Cancel</button>
+          <button onclick="saveCodeEditor()" class="btn-primary">Save to Remote</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/xterm.js"></script>
+  <script src="js/xterm-addon-fit.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

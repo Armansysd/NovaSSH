@@ -1,0 +1,21 @@
+[
+  {
+    "id": "demo-local",
+    "name": "🚀 Local Demo Sandbox (سرور آزمایشی)",
+    "host": "127.0.0.1",
+    "port": 2222,
+    "username": "novassh",
+    "auth_type": "password",
+    "password": "masterpiece",
+    "tags": [
+      "Demo",
+      "Sandbox",
+      "Local"
+    ],
+    "group": "Sandbox",
+    "notes": "سرور آزمایشی داخلی NovaSSH جهت بررسی فوری قابلیت‌های ترمینال، SFTP و مانیتورینگ بدون نیاز به سرور خارجی",
+    "status": "offline",
+    "latency_ms": 0,
+    "last_connected": "0001-01-01T00:00:00Z"
+  }
+]
