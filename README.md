@@ -87,4 +87,4 @@ Configuration data can be exported and imported as a JSON archive from the Setti
 
 ## License
 
-This project is open-source and distributed under the MIT License.
+This project is licensed under GPLv3.
